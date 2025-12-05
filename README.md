@@ -1,6 +1,6 @@
-# Databricks セットアップガイド
+# dbt-core-databricks-ci
 
-このドキュメントでは、dbt-core-demo-cafeプロジェクトをDatabricksで動かすためのセットアップ手順を説明します。
+このドキュメントでは、dbt-core-databricks-ciプロジェクトをDatabricksで動かすためのセットアップ手順を説明します。
 
 ## 📋 アーキテクチャ概要
 
