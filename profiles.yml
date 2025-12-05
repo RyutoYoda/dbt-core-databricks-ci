@@ -7,8 +7,8 @@ dbt_core_databricks_ci:
     # Personal Access Token (PAT) で認証
     dev:
       type: databricks
-      catalog: main
-      schema: "{{ env_var('USER', 'dev') }}_cafe"  # 開発者ごとに分離
+      catalog: sample_dev
+      schema: staging
       host: "{{ env_var('DATABRICKS_HOST') }}"
       http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
       token: "{{ env_var('DATABRICKS_TOKEN') }}"
@@ -18,8 +18,8 @@ dbt_core_databricks_ci:
     # Service Principal で認証
     stg:
       type: databricks
-      catalog: main
-      schema: stg_cafe
+      catalog: sample_stg
+      schema: staging
       host: "{{ env_var('DATABRICKS_HOST') }}"
       http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
       auth_type: oauth
@@ -31,6 +31,6 @@ dbt_core_databricks_ci:
     # Jobの実行コンテキストから自動取得（Service Principal不要）
     prod:
       type: databricks
-      catalog: main
-      schema: prod_cafe
+      catalog: sample_prod
+      schema: staging
       threads: 8

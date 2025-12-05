@@ -26,46 +26,67 @@ prod    →  Job実行コンテキスト（SP不要）      →  Databricks Job 
 1. Databricks UI → **SQL** → **SQL Warehouses**
 2. **Create SQL Warehouse** をクリック
 3. 設定例：
-   - Name: `dbt-warehouse`
+   - Name: `dbt_wh`
    - Cluster size: `Small`
    - Auto stop: `10 minutes`
 
 #### 1.2 カタログとスキーマの作成
 ```sql
--- Unity Catalog有効な場合
-CREATE CATALOG IF NOT EXISTS main;
+-- 開発環境用カタログ
+CREATE CATALOG IF NOT EXISTS sample_dev;
+CREATE SCHEMA IF NOT EXISTS sample_dev.staging;
+CREATE SCHEMA IF NOT EXISTS sample_dev.intermediate;
+CREATE SCHEMA IF NOT EXISTS sample_dev.marts;
 
--- 各環境用のスキーマ作成
-CREATE SCHEMA IF NOT EXISTS main.dev_cafe;
-CREATE SCHEMA IF NOT EXISTS main.stg_cafe;
-CREATE SCHEMA IF NOT EXISTS main.prod_cafe;
+-- ステージング環境用カタログ
+CREATE CATALOG IF NOT EXISTS sample_stg;
+CREATE SCHEMA IF NOT EXISTS sample_stg.staging;
+CREATE SCHEMA IF NOT EXISTS sample_stg.intermediate;
+CREATE SCHEMA IF NOT EXISTS sample_stg.marts;
+
+-- 本番環境用カタログ
+CREATE CATALOG IF NOT EXISTS sample_prod;
+CREATE SCHEMA IF NOT EXISTS sample_prod.staging;
+CREATE SCHEMA IF NOT EXISTS sample_prod.intermediate;
+CREATE SCHEMA IF NOT EXISTS sample_prod.marts;
 ```
 
 #### 1.3 Service Principal の作成（stg用のみ）
 
 **重要**: prod環境はDatabricks Job内で実行されるため、Jobの実行コンテキストを使用します。明示的なService Principalは**stg環境のみ**必要です。
 
-**Azure Databricksの場合:**
-1. Azure Portal → **Azure Active Directory** → **App registrations**
-2. **New registration** をクリック
-3. アプリケーション名: `dbt-service-principal-stg`
-4. **Certificates & secrets** → **New client secret** を作成
-5. `Client ID` と `Client Secret` をメモ
+**AWS/GCP Databricksの場合:**
 
-6. Databricks UI → **Settings** → **Identity and Access**
-7. **Service Principals** タブ → **Add Service Principal**
-8. Azure ADで作成したアプリケーション名を入力
+1. Databricks UI → **Settings** → **Identity and access**
+2. **Service principals** タブ → **Add service principal**
+3. Service principal名を入力: `dbt-ci-sp`
+4. **Add** をクリック
+5. 作成したService principalをクリック
+6. **Generate secret** をクリック
+7. 表示される以下をコピー（⚠️ 1回しか表示されない）:
+   - **Client ID**: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
+   - **Secret**: `dapi...`
 
-9. 権限設定（stg用のみ）:
+#### 1.4 Service Principalへの権限付与
+
+以下のSQLを実行してService Principalに必要な権限を付与：
+
 ```sql
 -- SQL Warehouse へのアクセス権限
-GRANT USAGE ON WAREHOUSE `dbt-warehouse` TO `dbt-service-principal-stg`;
+GRANT USAGE ON WAREHOUSE `dbt_wh` TO `dbt-ci-sp`;
+
+-- カタログへのアクセス権限（stg環境用）
+GRANT USE CATALOG ON CATALOG sample_stg TO `dbt-ci-sp`;
 
 -- スキーマへのアクセス権限
-GRANT ALL PRIVILEGES ON SCHEMA main.stg_cafe TO `dbt-service-principal-stg`;
+GRANT ALL PRIVILEGES ON SCHEMA sample_stg.staging TO `dbt-ci-sp`;
+GRANT ALL PRIVILEGES ON SCHEMA sample_stg.intermediate TO `dbt-ci-sp`;
+GRANT ALL PRIVILEGES ON SCHEMA sample_stg.marts TO `dbt-ci-sp`;
 
--- prod環境はDatabricks Jobの実行ユーザー/SPに権限付与
--- Job作成時に指定したクラスターの実行権限で動作
+-- 将来的なテーブル作成権限
+GRANT CREATE TABLE ON SCHEMA sample_stg.staging TO `dbt-ci-sp`;
+GRANT CREATE TABLE ON SCHEMA sample_stg.intermediate TO `dbt-ci-sp`;
+GRANT CREATE TABLE ON SCHEMA sample_stg.marts TO `dbt-ci-sp`;
 ```
 
 ### 2. ローカル開発環境のセットアップ

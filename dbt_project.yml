@@ -24,12 +24,15 @@ models:
     +materialized: view  # デフォルトはビューとして作成
 
     staging:             # ステージング（生データの整形領域）
+      +schema: staging
       +materialized: view
 
     intermediate:        # 中間処理用モデル
+      +schema: intermediate
       +materialized: view
 
     marts:               # マート層（最終成果物、分析用データ）
+      +schema: marts
       +materialized: table
 
 vars:
