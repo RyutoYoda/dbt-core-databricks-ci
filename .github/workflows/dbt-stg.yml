@@ -3,14 +3,6 @@ name: dbt Run - Staging
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'models/**'
-      - 'macros/**'
-      - 'seeds/**'
-      - 'tests/**'
-      - 'dbt_project.yml'
-      - 'packages.yml'
-      - 'profiles.yml'
 
 jobs:
   dbt-stg:
