@@ -1,8 +1,35 @@
-#データベースの接続情報を記載
+# Databricks接続設定
+# 環境変数を使用してセキュアに認証情報を管理
 dbt_core_demo_cafe:
   target: dev
   outputs:
+    # 開発環境（ローカル開発用）
+    # Personal Access Token (PAT) で認証
     dev:
-      type: duckdb
-      path: "./dbt_core_demo_cafe.duckdb"
-      schema: main
+      type: databricks
+      catalog: main
+      schema: "{{ env_var('USER', 'dev') }}_cafe"  # 開発者ごとに分離
+      host: "{{ env_var('DATABRICKS_HOST') }}"
+      http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
+      token: "{{ env_var('DATABRICKS_TOKEN') }}"
+      threads: 4
+
+    # ステージング環境（PR時のCI/CD）
+    # Service Principal で認証
+    stg:
+      type: databricks
+      catalog: main
+      schema: stg_cafe
+      host: "{{ env_var('DATABRICKS_HOST') }}"
+      http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
+      client_id: "{{ env_var('DATABRICKS_CLIENT_ID') }}"
+      client_secret: "{{ env_var('DATABRICKS_CLIENT_SECRET') }}"
+      threads: 4
+
+    # 本番環境（Databricks Job経由）
+    # Jobの実行コンテキストから自動取得（Service Principal不要）
+    prod:
+      type: databricks
+      catalog: main
+      schema: prod_cafe
+      threads: 8

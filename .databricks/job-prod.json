@@ -1,0 +1,121 @@
+{
+  "name": "dbt-core-demo-cafe-prod",
+  "description": "本番環境のdbtジョブ - daily実行",
+  "job_clusters": [
+    {
+      "job_cluster_key": "dbt_cluster",
+      "new_cluster": {
+        "spark_version": "14.3.x-scala2.12",
+        "node_type_id": "Standard_DS3_v2",
+        "num_workers": 2,
+        "spark_conf": {
+          "spark.databricks.delta.preview.enabled": "true"
+        }
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "task_key": "dbt_deps",
+      "description": "dbt依存関係のインストール",
+      "job_cluster_key": "dbt_cluster",
+      "libraries": [
+        {
+          "pypi": {
+            "package": "dbt-databricks>=1.8.0"
+          }
+        }
+      ],
+      "python_wheel_task": {
+        "package_name": "dbt",
+        "entry_point": "dbt",
+        "parameters": ["deps", "--profiles-dir", ".", "--project-dir", "."]
+      }
+    },
+    {
+      "task_key": "dbt_build",
+      "description": "dbtモデルのビルドとテスト実行",
+      "depends_on": [
+        {
+          "task_key": "dbt_deps"
+        }
+      ],
+      "job_cluster_key": "dbt_cluster",
+      "libraries": [
+        {
+          "pypi": {
+            "package": "dbt-databricks>=1.8.0"
+          }
+        }
+      ],
+      "python_wheel_task": {
+        "package_name": "dbt",
+        "entry_point": "dbt",
+        "parameters": [
+          "build",
+          "--target",
+          "prod",
+          "--profiles-dir",
+          ".",
+          "--project-dir",
+          "."
+        ]
+      }
+    },
+    {
+      "task_key": "dbt_docs_generate",
+      "description": "dbtドキュメントの生成",
+      "depends_on": [
+        {
+          "task_key": "dbt_build"
+        }
+      ],
+      "job_cluster_key": "dbt_cluster",
+      "libraries": [
+        {
+          "pypi": {
+            "package": "dbt-databricks>=1.8.0"
+          }
+        }
+      ],
+      "python_wheel_task": {
+        "package_name": "dbt",
+        "entry_point": "dbt",
+        "parameters": [
+          "docs",
+          "generate",
+          "--target",
+          "prod",
+          "--profiles-dir",
+          ".",
+          "--project-dir",
+          "."
+        ]
+      }
+    }
+  ],
+  "git_source": {
+    "git_url": "https://github.com/YOUR_ORG/dbt-core-demo-cafe",
+    "git_provider": "github",
+    "git_branch": "main"
+  },
+  "access_control_list": [
+    {
+      "group_name": "users",
+      "permission_level": "CAN_VIEW"
+    }
+  ],
+  "schedule": {
+    "quartz_cron_expression": "0 0 6 * * ?",
+    "timezone_id": "Asia/Tokyo",
+    "pause_status": "UNPAUSED"
+  },
+  "email_notifications": {
+    "on_failure": ["your-team@example.com"],
+    "on_success": [],
+    "no_alert_for_skipped_runs": false
+  },
+  "timeout_seconds": 3600,
+  "max_concurrent_runs": 1,
+  "format": "MULTI_TASK"
+}
