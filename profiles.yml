@@ -1,6 +1,6 @@
 # Databricks接続設定
 # 環境変数を使用してセキュアに認証情報を管理
-dbt_core_demo_cafe:
+dbt_core_databricks_ci:
   target: dev
   outputs:
     # 開発環境（ローカル開発用）

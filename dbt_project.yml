@@ -1,7 +1,7 @@
-name: 'dbt_core_demo_cafe'  # プロジェクト名
+name: 'dbt_core_databricks_ci'  # プロジェクト名
 version: '1.0.0'  # プロジェクトのバージョン
 config-version: 2  # dbtの設定バージョン
-profile: 'dbt_core_demo_cafe'  # 使用するプロファイル名
+profile: 'dbt_core_databricks_ci'  # 使用するプロファイル名
 
 # 各種パスの設定（相対パス）
 model-paths: ["models"]        # モデル（SQL変換ロジック）のフォルダ
@@ -20,7 +20,7 @@ clean-targets:         # `dbt clean` 実行時に削除されるフォルダ
 # 詳細は公式ドキュメント: https://docs.getdbt.com/ja/docs/configuring-models
 
 models:
-  dbt_core_demo_cafe:
+  dbt_core_databricks_ci:
     +materialized: view  # デフォルトはビューとして作成
 
     staging:             # ステージング（生データの整形領域）
@@ -32,9 +32,5 @@ models:
     marts:               # マート層（最終成果物、分析用データ）
       +materialized: table
 
-# DuckDB用のプロファイル情報
-# 外部の profiles.yml を使わずに接続設定できる
-# 詳細: https://docs.getdbt.com/docs/core/connection-profiles#advanced-profile-configs
-
 vars:
-  dbt_project_name: dbt_core_demo_cafe  # 変数定義（例としてプロジェクト名）
+  dbt_project_name: dbt_core_databricks_ci  # 変数定義（例としてプロジェクト名）

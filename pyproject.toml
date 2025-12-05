@@ -1,13 +1,10 @@
 [project]
-name = "dbt-core-demo-cafe"
+name = "dbt-core-databricks-ci"
 version = "0.1.0"
-description = "dbt project for analyzing cafe operation data"
+description = "dbt project for Databricks with CI/CD (dev/stg/prod)"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "dbt-databricks>=1.8.0",
-    "streamlit>=1.32.0",
-    "polars>=0.20.0",
-    "pyarrow>=22.0.0",
-    "mashumaro>=3.17",
 ]
+

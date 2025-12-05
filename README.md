@@ -1,179 +1,272 @@
-# dbt-core-demo-cafe🥷
+# Databricks セットアップガイド
 
-このdbtプロジェクトは、架空のカフェの運営データを分析するためのデータパイプラインを提供します。
-<img width="878" alt="スクリーンショット 2025-07-06 17 59 03" src="https://github.com/user-attachments/assets/54404022-df87-4017-be50-9615f0ff4d28" />
+このドキュメントでは、dbt-core-demo-cafeプロジェクトをDatabricksで動かすためのセットアップ手順を説明します。
 
-## 前提条件
+## 📋 アーキテクチャ概要
 
-- [Cursor](https://cursor.com/ja), [VS Code](https://code.visualstudio.com/) などのIDE環境が用意されていること
-- [uv](https://docs.astral.sh/uv/) がインストールされていること
-  ```bash
-  # macOS/Linuxの場合
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-  # またはHomebrewの場合
-  brew install uv
-  ```
-- [cargo-make](https://github.com/sagiegurari/cargo-make) がインストールされていること
-  ```bash
-  # Homebrewの場合（推奨）
-  brew install rust
-  brew install cargo-make
-  ```
-
-## プロジェクトの目的
-
-このプロジェクトは、カフェの売上、顧客行動、商品パフォーマンス、店舗運営に関する洞察を得ることを目的としています。
-具体的には、以下の分析を想定したモデリングを行っています。
-
-- **売上分析**: 日次、月次、年次の売上トレンド、商品カテゴリ別の売上、店舗別の売上などを把握します。
-- **顧客分析**: 顧客の購買頻度、初回購入日、最終購入日、顧客満足度などを分析し、顧客セグメンテーションやLTV（顧客生涯価値）の算出に役立てます。
-- **商品分析**: 売れ筋商品、死に筋商品、カスタマイズの有無による売上への影響などを分析し、商品戦略の改善に貢献します。
-- **店舗分析**: 各店舗の売上貢献度、顧客満足度、注文方法の傾向などを分析し、店舗運営の最適化に役立てます。
-
-## データモデルの概要
-
-このプロジェクトは、以下の3つのレイヤーでデータモデルを構築しています。
-
-1.  **Staging Layer (`stg_`プレフィックス)**:
-    - 生データソースから直接データを読み込み、基本的な整形（カラム名のリネーム、データ型の変換など）を行います。
-    - 日本語のカラム名を英語に変換し、後続のモデルで扱いやすい形式に統一します。
-    - 各ソーステーブルに対応するモデルが存在します。
-    - 例: `stg_customers`, `stg_order_items`, `stg_orders`, `stg_products`, `stg_stores`
-
-2.  **Intermediate Layer (`int_`プレフィックス)**:
-    - Staging Layerのデータを結合し、より複雑なビジネスロジックや計算を適用します。
-    - 最終的な分析モデル（Mart Layer）で利用しやすいように、データを集約・変換します。
-    - 例: `int_order_items_joined` (注文、注文明細、商品データを結合し、合計金額を計算)
-
-3.  **Mart Layer (`dim_` / `fct_`プレフィックス)**:
-    - 最終的な分析やレポート作成に利用されるディメンション（`dim_`）およびファクト（`fct_`）テーブルです。
-    - ディメンションテーブルは、顧客、商品、店舗などの属性情報を提供します。
-    - ファクトテーブルは、注文などのイベントや測定値を提供します。
-    - 例:
-      　ディメンション
-        - `dim_customers`: 顧客ごとの初回注文日、最終注文日、注文回数など
-        - `dim_products`: 商品の基本情報
-        - `dim_stores`: 店舗の基本情報
-      　ファクト
-        - `fct_orders`: 各注文の合計金額、合計数量、満足度、利用シーンなど
-
-## 各モデルの詳細について
-
-各モデルファイルには、そのモデルの目的、使用しているソース、主要な変換ロジックについてのコメントが記載されています。
-
-## dbtの実行方法(CLI)
-
-### クイックスタート
-
-```bash
-# セットアップ
-makers sync
-
-# フルビルド（dbt deps + dbt seed + dbt run + dbt test）
-makers build
+```
+環境              認証方式                              実行方法
+──────────────────────────────────────────────────────────────────────
+dev     →  Personal Access Token (PAT)        →  ローカル開発
+stg     →  Service Principal (OAuth)          →  GitHub Actions (PR時)
+prod    →  Job実行コンテキスト（SP不要）      →  Databricks Job (daily)
 ```
 
-### dbtコマンドとmakersコマンドの対応表
+## 🔧 前提条件
 
-| dbtコマンド | makersコマンド | 説明 |
-|------------|---------------|------|
-| `dbt deps` | `makers dbt deps` | dbtパッケージのインストール |
-| `dbt seed` | `makers dbt seed` | シードデータのロード |
-| `dbt run` | `makers dbt run` | モデルの実行 |
-| `dbt test` | `makers dbt test` | テストの実行 |
-| `dbt docs generate` | `makers dbt docs generate` | ドキュメントの生成 |
-| `dbt docs serve` | `makers dbt docs serve` | ドキュメントの配信 |
-| - | `makers build` | フルビルド（deps + seed + run + test） |
-| - | `makers streamlit` | Streamlitアプリの起動 |
-| - | `makers duckdb` | DuckDB CLIの起動 |
+- Databricks ワークスペース（Azure または AWS）
+- Python 3.10以上
+- dbt-databricks 1.8.0以上
 
-### 各コマンド
+## 🚀 セットアップ手順
 
-利用可能なコマンド一覧を確認：
-```bash
-makers help
+### 1. Databricks リソースの準備
+
+#### 1.1 SQL Warehouse の作成
+1. Databricks UI → **SQL** → **SQL Warehouses**
+2. **Create SQL Warehouse** をクリック
+3. 設定例：
+   - Name: `dbt-warehouse`
+   - Cluster size: `Small`
+   - Auto stop: `10 minutes`
+
+#### 1.2 カタログとスキーマの作成
+```sql
+-- Unity Catalog有効な場合
+CREATE CATALOG IF NOT EXISTS main;
+
+-- 各環境用のスキーマ作成
+CREATE SCHEMA IF NOT EXISTS main.dev_cafe;
+CREATE SCHEMA IF NOT EXISTS main.stg_cafe;
+CREATE SCHEMA IF NOT EXISTS main.prod_cafe;
 ```
 
-1.  **環境セットアップと依存関係のインストール**:
-    ```bash
-    makers sync
-    ```
-    Pythonの仮想環境が作成され、必要なパッケージ（`dbt-duckdb`など）がインストールされます。
+#### 1.3 Service Principal の作成（stg用のみ）
 
-2.  **dbtパッケージのインストール**:
-    ```bash
-    makers dbt deps
-    ```
+**重要**: prod環境はDatabricks Job内で実行されるため、Jobの実行コンテキストを使用します。明示的なService Principalは**stg環境のみ**必要です。
 
-3.  **シードデータのロード**:
-    ```bash
-    makers dbt seed
-    ```
+**Azure Databricksの場合:**
+1. Azure Portal → **Azure Active Directory** → **App registrations**
+2. **New registration** をクリック
+3. アプリケーション名: `dbt-service-principal-stg`
+4. **Certificates & secrets** → **New client secret** を作成
+5. `Client ID` と `Client Secret` をメモ
 
-4.  **モデルの実行**:
-    ```bash
-    makers dbt run
-    ```
+6. Databricks UI → **Settings** → **Identity and Access**
+7. **Service Principals** タブ → **Add Service Principal**
+8. Azure ADで作成したアプリケーション名を入力
 
-5.  **テストの実行**:
-    ```bash
-    makers dbt test
-    ```
+9. 権限設定（stg用のみ）:
+```sql
+-- SQL Warehouse へのアクセス権限
+GRANT USAGE ON WAREHOUSE `dbt-warehouse` TO `dbt-service-principal-stg`;
 
-6.  **フルビルド（deps + seed + run + test）**:
-    ```bash
-    makers build
-    ```
+-- スキーマへのアクセス権限
+GRANT ALL PRIVILEGES ON SCHEMA main.stg_cafe TO `dbt-service-principal-stg`;
 
-7.  **Streamlitで可視化**:
-    ```bash
-    makers streamlit
-    ```
-
-8.  **ドキュメントの生成と表示**:
-    ```bash
-    makers dbt docs generate
-    makers dbt docs serve
-    ```
-    ブラウザで `http://localhost:8080` にアクセスすると、生成されたドキュメントを確認できます。
-
-9.  **DuckDBの操作**:
-    ```bash
-    makers duckdb
-    ```
-    DuckDB CLIが起動します。以下のようなコマンドが使えます：
-    ```sql
-    SELECT * FROM fct_orders LIMIT 10;
-    .tables  -- テーブルの一覧
-    .exit    -- 終了
-    ```
-
-10. **クリーンアップ**:
-    ```bash
-    makers clean
-    ```
-    仮想環境、dbtの成果物（`target`、`dbt_packages`、`logs`）を削除し、クリーンな状態に戻します。
-
-### 仮想環境をアクティベートして直接実行する場合
-
-makersを使わずにdbtコマンドを直接実行したい場合：
-
-```bash
-# 環境のセットアップ
-uv sync
-source .venv/bin/activate
-
-# dbtコマンドを直接実行
-dbt deps   # パッケージのインストール
-dbt seed   # シードデータのロード
-dbt run    # モデルの実行
-dbt test   # テストの実行
+-- prod環境はDatabricks Jobの実行ユーザー/SPに権限付与
+-- Job作成時に指定したクラスターの実行権限で動作
 ```
 
-## 今後の拡張
+### 2. ローカル開発環境のセットアップ
 
-- さらなる分析要件に応じたMartモデルの追加
-- データ品質テストの強化
-- パフォーマンス最適化
+#### 2.1 依存関係のインストール
+```bash
+pip install -e .
+```
 
-このプロジェクトが、dbtを使ったデータモデリングの学習に役立つことを願っています。
+#### 2.2 環境変数の設定
+
+`.env` ファイルを作成（gitignore済み）:
+```bash
+# Databricks接続情報
+export DATABRICKS_HOST="https://adb-xxxxx.azuredatabricks.net"
+export DATABRICKS_HTTP_PATH="/sql/1.0/warehouses/xxxxx"
+
+# 開発環境用 - Personal Access Token
+export DATABRICKS_TOKEN="dapi..."
+
+# CI/CD用 - Service Principal (ローカルでは不要)
+# export DATABRICKS_CLIENT_ID="xxxxx"
+# export DATABRICKS_CLIENT_SECRET="xxxxx"
+```
+
+環境変数を読み込み:
+```bash
+source .env
+```
+
+#### 2.3 接続テスト
+```bash
+dbt debug --target dev
+```
+
+### 3. GitHub Actions のセットアップ（stg環境）
+
+#### 3.1 GitHub Secrets の設定
+
+リポジトリの **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+
+以下のシークレットを追加（**stg環境用のみ**）:
+```
+DATABRICKS_HOST
+  例: https://adb-xxxxx.azuredatabricks.net
+
+DATABRICKS_HTTP_PATH
+  例: /sql/1.0/warehouses/xxxxx
+
+DATABRICKS_CLIENT_ID_STG
+  例: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  (stg用Service PrincipalのClient ID)
+
+DATABRICKS_CLIENT_SECRET_STG
+  例: xxxxxxxxxxxxxxxxxxxxx
+  (stg用Service PrincipalのClient Secret)
+```
+
+**注意**: prod環境用のSecretsは不要です（Databricks Job内で実行されるため）
+
+#### 3.2 動作確認
+
+1. 新しいブランチを作成
+2. `models/` 配下のファイルを編集
+3. PRを作成
+4. GitHub Actionsが自動実行され、stg環境にテーブルが作成される
+
+### 4. Databricks Job のセットアップ（prod環境）
+
+#### 4.1 Jobの作成
+
+1. Databricks UI → **Workflows** → **Create Job**
+
+2. 基本設定:
+   - **Job name**: `dbt-core-demo-cafe-prod`
+   - **Git repository**: このリポジトリのURL
+   - **Git branch**: `main`
+
+3. タスク設定（3つのタスクを作成）:
+
+**Task 1: dbt_deps**
+```
+Task name: dbt_deps
+Type: Python script
+Cluster: 新規クラスター（Standard_DS3_v2, 2 workers）
+Libraries: dbt-databricks>=1.8.0
+Script:
+  import subprocess
+  subprocess.run(["dbt", "deps", "--profiles-dir", ".", "--project-dir", "."])
+```
+
+**Task 2: dbt_build** (depends on dbt_deps)
+```
+Task name: dbt_build
+Type: Python script
+Cluster: 上記と同じクラスター
+Libraries: dbt-databricks>=1.8.0
+Script:
+  import subprocess
+  subprocess.run(["dbt", "build", "--target", "prod", "--profiles-dir", ".", "--project-dir", "."])
+```
+
+**Task 3: dbt_docs_generate** (depends on dbt_build)
+```
+Task name: dbt_docs_generate
+Type: Python script
+Cluster: 上記と同じクラスター
+Libraries: dbt-databricks>=1.8.0
+Script:
+  import subprocess
+  subprocess.run(["dbt", "docs", "generate", "--target", "prod", "--profiles-dir", ".", "--project-dir", "."])
+```
+
+4. スケジュール設定:
+   - **Schedule**: Cron expression `0 6 * * *`（毎日6時）
+   - **Timezone**: `Asia/Tokyo`
+
+5. 環境変数の設定:
+
+**不要です！** Databricks Job内でdbtを実行する場合、`profiles.yml` の `prod` ターゲットは実行コンテキストから自動的に接続情報を取得します。
+
+```yaml
+# profiles.yml の prod 設定（シンプル）
+prod:
+  type: databricks
+  catalog: main
+  schema: prod_cafe
+  threads: 8
+  # host, http_path, token等は不要（自動取得）
+```
+
+#### 4.2 手動実行テスト
+1. Jobページの **Run now** をクリック
+2. 実行ログを確認
+3. `main.prod_cafe` スキーマにテーブルが作成されたことを確認
+
+## 📊 運用フロー
+
+### 開発フロー
+```mermaid
+graph LR
+    A[ローカル開発] --> B[feature branchにcommit]
+    B --> C[PR作成]
+    C --> D[GitHub Actions実行]
+    D --> E[stg環境にデプロイ]
+    E --> F[レビュー & approve]
+    F --> G[main merge]
+    G --> H[Databricks Job by schedule]
+    H --> I[prod環境にデプロイ]
+```
+
+### 日次運用
+1. **毎日6:00 JST**: Databricks Jobが自動実行
+2. 失敗時: メール通知
+3. 成功時: `main.prod_cafe` スキーマが更新
+
+## 🔍 トラブルシューティング
+
+### 接続エラー
+```bash
+# 接続診断
+dbt debug --target dev
+
+# よくあるエラー
+# 1. DATABRICKS_HOST が https:// から始まっているか確認
+# 2. DATABRICKS_HTTP_PATH が /sql/1.0/warehouses/... の形式か確認
+# 3. SQL Warehouse が起動しているか確認
+```
+
+### 権限エラー
+```sql
+-- Service Principal の権限確認
+SHOW GRANTS ON SCHEMA main.stg_cafe;
+
+-- 必要に応じて権限付与
+GRANT ALL PRIVILEGES ON SCHEMA main.stg_cafe TO `dbt-service-principal-stg`;
+```
+
+### GitHub Actions エラー
+1. Secretsが正しく設定されているか確認
+2. Service Principalの有効期限が切れていないか確認
+3. SQL Warehouseが起動しているか確認
+
+## 📚 参考リンク
+
+- [dbt-databricks ドキュメント](https://docs.getdbt.com/docs/core/connect-data-platform/databricks-setup)
+- [Databricks Service Principal](https://docs.databricks.com/en/dev-tools/service-principals.html)
+- [Unity Catalog権限管理](https://docs.databricks.com/en/data-governance/unity-catalog/manage-privileges/index.html)
+
+## ✅ チェックリスト
+
+セットアップ完了時の確認項目:
+
+- [ ] SQL Warehouseが作成済み
+- [ ] カタログとスキーマ（dev_cafe, stg_cafe, prod_cafe）が作成済み
+- [ ] Service Principal（**stg用のみ**）が作成済み
+- [ ] stg用Service Principalに適切な権限が付与済み
+- [ ] ローカルで `dbt debug --target dev` が成功
+- [ ] GitHub Secrets（stg用）が設定済み
+- [ ] PRを作成してGitHub Actionsが正常動作（stg環境にテーブル作成確認）
+- [ ] Databricks Jobが作成済み（GitHub連携設定含む）
+- [ ] Databricks Jobのクラスターにprod_cafeスキーマへの権限付与済み
+- [ ] Databricks Jobを手動実行して正常動作（prod環境にテーブル作成確認）
+- [ ] スケジュール設定が有効化済み
