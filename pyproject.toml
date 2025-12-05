@@ -8,3 +8,7 @@ dependencies = [
     "dbt-databricks>=1.8.0",
 ]
 
+[tool.setuptools]
+# dbtプロジェクトなので、Pythonパッケージの自動検出を無効化
+py-modules = []
+
