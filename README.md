@@ -1,5 +1,7 @@
 # dbt-core-databricks-ci
 
+dbt project for Databricks with CI/CD pipeline (dev/stg/prod)
+
 このドキュメントでは、dbt-core-databricks-ciプロジェクトをDatabricksで動かすためのセットアップ手順を説明します。
 
 ## 📋 アーキテクチャ概要
