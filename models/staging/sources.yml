@@ -3,7 +3,7 @@ version: 2
 
 sources:
   - name: main
-    schema: main
+    # schema指定を削除 - profiles.ymlのschema設定を使用
     tables:
       - name: 店舗マスタ
       - name: 商品マスタ
