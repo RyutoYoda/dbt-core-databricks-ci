@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: dim_customers
-    description: "顧客に関するディメンションテーブルです。顧客の基本情報と、初回注文日、最終注文日、注文回数などの集計情報を提供します。顧客分析の基礎となります。"
+    description: "顧客に関するディメンションテーブルです。顧客の基本情報と、初回注文日、最終注文日、注文回数など集計情報を提供します。顧客分析の基礎となります。"
     columns:
       - name: customer_key
         description: "顧客を一意に識別する代理キーです。dbt_utils.generate_surrogate_keyによって生成されます。"
